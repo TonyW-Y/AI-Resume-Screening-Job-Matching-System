@@ -51,5 +51,6 @@ def main():
     # save to CSV
     df.to_csv(OUTPUT_CSV, index=False)
     print(f"Saved to {OUTPUT_CSV}")
-    
-main()
+
+if __name__ == "__main__":
+    main()

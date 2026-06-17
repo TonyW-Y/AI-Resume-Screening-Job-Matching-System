@@ -16,7 +16,7 @@ def main():
     df["resume_text"] = df["resume_text"].fillna("").astype(str)
     print(df.shape)
 
-    # load all-mpnet-base-v2 model (reads text and convers into numbers)
+    # load all-mpnet-base-v2 model (reads text and convers into 768 numbers)
     print(f"Loading model on device: {device}")
     model = SentenceTransformer("all-mpnet-base-v2", device=device)
 
@@ -28,4 +28,6 @@ def main():
     # Save embeddings
     np.save(OUTPUT_NPY, embeddings)
     print(f"✅ Saved to {OUTPUT_NPY}")
-main()
+    
+if __name__ == "__main__":
+    main()
