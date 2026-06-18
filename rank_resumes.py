@@ -6,10 +6,7 @@ import chromadb
 import ollama
 from sentence_transformers import SentenceTransformer
 from ffn import ffn
-
 from typing import Dict, Any
-
-
 import joblib
 
 # Paths
@@ -18,6 +15,7 @@ CHROMA_PATH = "chromadb_store"
 EMBEDDING_FILE = "embeddings/resumes.npy"
 CSV_FILE = "data/master_resumes.csv"
 CLASSIFIER_MODEL = "models/classifier_model.pth"
+
 
 # set device
 device = "mps" if torch.backends.mps.is_available() else "cpu"
@@ -36,6 +34,20 @@ collection = client.get_or_create_collection(
     "resumes",
     metadata={"hnsw:space": "cosine"}
 )  # creats/opens collection (like s table in SQL)
+
+# Auto-build DB if empty
+if collection.count() == 0:
+    print("ChromaDB is empty, building now...")
+    embedding = np.load(EMBEDDING_FILE)
+    df = pd.read_csv(CSV_FILE)
+    df["resume_text"] = df["resume_text"].fillna("").astype(str)
+    collection.add(
+        embeddings=embedding.tolist(),
+        documents=df["resume_text"].tolist(),
+        metadatas=[{"category": cat} for cat in df["category"].tolist()],
+        ids=[str(i) for i in range(len(df))]
+    )
+    print(f"✅ ChromaDB built with {collection.count()} resumes")
 
 # loading the encoder
 le = joblib.load("models/label_encoder.pkl")
@@ -124,7 +136,6 @@ def search_resumes(jd_text: str, top_k: int = 5) -> Dict[str, Any]:
             }
     except Exception as e:
         print(f"ERROR: {e}")
-
         return {
             "error": str(e),
             "predicted_category": None,
