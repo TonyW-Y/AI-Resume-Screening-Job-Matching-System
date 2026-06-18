@@ -1,13 +1,12 @@
 import torch
-import torch.nn as nn
-import numpy as np
-import pandas as pd
 import chromadb
 import ollama
 from sentence_transformers import SentenceTransformer
 from ffn import ffn
 from typing import Dict, Any
 import joblib
+from build_db import build_chromadb
+
 
 # Paths
 OLLAMA_MODEL = "llama3.2:3b"
@@ -31,24 +30,13 @@ classifier.eval()
 # load ChromaDB
 client = chromadb.PersistentClient(path=CHROMA_PATH)  # creates/opens the DB
 collection = client.get_or_create_collection(
-    "resumes",
+    "resumes", 
     metadata={"hnsw:space": "cosine"}
 )  # creats/opens collection (like s table in SQL)
 
 # Auto-build DB if empty
 if collection.count() == 0:
-    print("ChromaDB is empty, building now...")
-    embedding = np.load(EMBEDDING_FILE)
-    df = pd.read_csv(CSV_FILE)
-    df["resume_text"] = df["resume_text"].fillna("").astype(str)
-    collection.add(
-        embeddings=embedding.tolist(),
-        documents=df["resume_text"].tolist(),
-        metadatas=[{"category": cat} for cat in df["category"].tolist()],
-        ids=[str(i) for i in range(len(df))]
-    )
-    print(f"✅ ChromaDB built with {collection.count()} resumes")
-
+    build_chromadb()
 # loading the encoder
 le = joblib.load("models/label_encoder.pkl")
 
