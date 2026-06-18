@@ -23,7 +23,10 @@ def build_chromadb():
 
 
     client = chromadb.PersistentClient(path=CHROMA_PATH)  # creates/opens the DB
-    collection = client.get_or_create_collection("resumes")  # creats/opens collection (like s table in SQL)
+    collection = client.get_or_create_collection(
+        "resumes",
+        metadata={"hnsw:space": "cosine"}
+    )  # creats/opens collection (like s table in SQL)
 
     # only add if collection is empty
     if collection.count() == 0:

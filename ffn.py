@@ -7,7 +7,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 from torch.utils.data import TensorDataset, DataLoader
 
-
+import joblib
 
 class ffn(nn.Module):
     def __init__(self, in_features=768, h1=256, h2=128, out_features=24, drop=0.2):
@@ -43,6 +43,10 @@ def main():
     # turns the category text into recognizable numbers
     le = LabelEncoder()
     labels = le.fit_transform(df["category"])
+    # saving the encoder
+    joblib.dump(le, "models/label_encoder.pkl")
+    print(f"✅ Encoder saved with {len(le.classes_)} classes: {le.classes_}")
+
 
     # convert to tensor
     embeddings = torch.tensor(embeddings, dtype=torch.float32)
