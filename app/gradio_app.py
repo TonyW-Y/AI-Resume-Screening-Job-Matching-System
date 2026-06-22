@@ -1,55 +1,7 @@
-# ============================================================
-# FIX: Only patch HfFolder on the main module, not __init__
-# ============================================================
-import sys
-import importlib
-
-# Step 1: Let huggingface_hub load normally first
-try:
-    import huggingface_hub as hf_hub
-    print(f"✓ huggingface_hub loaded: {hf_hub.__version__}")
-except Exception as e:
-    print(f"⚠️ Error loading huggingface_hub: {e}")
-
-# Step 2: Check if HfFolder exists, if not, add it to the main module
-if not hasattr(hf_hub, 'HfFolder'):
-    class HfFolder:
-        @staticmethod
-        def get_token():
-            return None
-        @staticmethod
-        def save_token(token):
-            pass
-        @staticmethod
-        def delete_token():
-            pass
-        @staticmethod
-        def get_token_path():
-            return "/tmp/fake_token"
-        @staticmethod
-        def get_path():
-            return "/tmp/fake_token"
-    
-    # Add HfFolder to the main module ONLY
-    hf_hub.HfFolder = HfFolder
-    setattr(hf_hub, 'HfFolder', HfFolder)
-    
-    # Update sys.modules
-    sys.modules['huggingface_hub'] = hf_hub
-    
-    print("✓ HfFolder patched successfully on main module")
-else:
-    print("✓ HfFolder already exists")
-
-print("✓ All patches applied successfully")
-
-# ============================================================
-# NOW safe to import gradio
-# ============================================================
 import gradio as gr
 import os
-
-# Rest of your imports
+import sys
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from rank_resumes import search_resumes
 from resume_manager import get_all_resumes, delete_resume, add_resume_from_text, add_resume_from_pdf
 
@@ -97,7 +49,6 @@ with gr.Blocks(title="AI Resume Screener") as demo:
     gr.Markdown("# 🤖 AI Resume Screener")
     
     with gr.Tabs():
-        # ── Tab 1: Search ──────────────────────────────────────────
         with gr.Tab("🔍 Search"):
             gr.Markdown("Enter a job description to find the most matching candidates")
             with gr.Row():
@@ -113,11 +64,9 @@ with gr.Blocks(title="AI Resume Screener") as demo:
                 outputs=[candidates_output, report_output]
             )
 
-        # ── Tab 2: Resume Manager ──────────────────────────────────
         with gr.Tab("📁 Resume Manager"):
             gr.Markdown("## View, Add, and Delete Resumes")
             
-            # ── View/Filter ──
             gr.Markdown("### View Resumes")
             with gr.Row():
                 category_filter = gr.Dropdown(
@@ -134,7 +83,6 @@ with gr.Blocks(title="AI Resume Screener") as demo:
             )
             load_btn.click(fn=load_resumes, inputs=[category_filter], outputs=[resume_table])
 
-            # ── Delete ──
             gr.Markdown("### Delete Resume")
             with gr.Row():
                 delete_id_input = gr.Textbox(label="Resume ID to Delete", placeholder="Enter ID e.g. 42")
@@ -142,7 +90,6 @@ with gr.Blocks(title="AI Resume Screener") as demo:
             delete_output = gr.Textbox(label="Result")
             delete_btn.click(fn=delete_resume_ui, inputs=[delete_id_input], outputs=[delete_output])
 
-            # ── Add from Text ──
             gr.Markdown("### Add Resume from Text")
             with gr.Row():
                 add_text_input = gr.Textbox(label="Resume Text", lines=5, placeholder="Paste resume text here...")
@@ -151,7 +98,6 @@ with gr.Blocks(title="AI Resume Screener") as demo:
             add_text_output = gr.Textbox(label="Result")
             add_text_btn.click(fn=add_text_ui, inputs=[add_text_input, add_category_input], outputs=[add_text_output])
 
-            # ── Add from PDF ──
             gr.Markdown("### Add Resume from PDF")
             with gr.Row():
                 pdf_upload = gr.File(label="Upload PDF", file_types=[".pdf"])
@@ -161,4 +107,4 @@ with gr.Blocks(title="AI Resume Screener") as demo:
             add_pdf_btn.click(fn=add_pdf_ui, inputs=[pdf_upload, pdf_category_input], outputs=[add_pdf_output])
 
 if __name__ == "__main__":
-    demo.launch()
+    demo.launch(server_name="0.0.0.0", server_port=7860)

@@ -8,10 +8,12 @@ from typing import Dict, Any
 import joblib
 from build_db import build_chromadb
 from huggingface_hub import InferenceClient
+from groq import Groq
+
 
 
 # Paths
-HF_TOKEN = os.environ.get("HF_TOKEN")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY")
 OLLAMA_MODEL = "llama3.2:3b"
 CHROMA_PATH = "chromadb_store"
 EMBEDDING_FILE = "embeddings/resumes.npy"
@@ -98,36 +100,34 @@ def search_resumes(jd_text: str, top_k: int = 5) -> Dict[str, Any]:
 
 
         prompt = f"""You are an expert hiring manager and recruiter.
-
         Job Description:
         {jd_text}
-
         Here are the top {top_k} retrieved candidates:
         {context}
-
         Please provide:
         1. A ranked list of candidates from most to least suitable
         2. For each candidate explain WHY they are a good or poor fit
         3. A final hiring recommendation with reasoning
-
         Be specific and reference actual skills and experience from the resumes."""
 
-        if HF_TOKEN:
-            # deployed - use HuggingFace
-            hf_client = InferenceClient(
-                model="meta-llama/Llama-3.2-3B-Instruct",
-                token=HF_TOKEN
+
+        # in search_resumes function:
+        if GROQ_API_KEY:
+            groq_client = Groq(api_key=GROQ_API_KEY)
+            response = groq_client.chat.completions.create(
+                model="llama-3.1-8b-instant",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.01,
+                max_tokens=1000
             )
-            report = hf_client.text_generation(prompt, max_new_tokens=1000, temperature=0.01)
+            report = response.choices[0].message.content
         else:
-            # local - use Ollama
             response = ollama.chat(
                 model=OLLAMA_MODEL,
                 messages=[{"role": "user", "content": prompt}],
                 options={"temperature": 0.0}
             )
             report = response["message"]["content"]
-
         return {
                 "predicted_category": predicted_category,
                 "ranked_candidates": ranked,
