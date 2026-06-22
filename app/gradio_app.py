@@ -1,5 +1,5 @@
 # ============================================================
-# FIX: Complete mock of huggingface_hub for ALL imports
+# FIX: Mock huggingface_hub but let gradio_client load normally
 # ============================================================
 import sys
 import importlib
@@ -22,41 +22,39 @@ class MockHfFolder:
     def get_path():
         return "/tmp/fake_token"
 
-# Create a mock client that handles all the imports
-class MockClient:
-    pass
+# Create a fake huggingface_hub module with ALL required imports
+class MockHubModule:
+    HfFolder = MockHfFolder
+    whoami = lambda: {"name": "user", "token": None}
+    CommitOperationAdd = type('CommitOperationAdd', (), {})
+    SpaceHardware = type('SpaceHardware', (), {})
+    SpaceStage = type('SpaceStage', (), {})
+    RepositoryNotFoundError = type('RepositoryNotFoundError', (Exception,), {})
+    RevisionNotFoundError = type('RevisionNotFoundError', (Exception,), {})
+    EntryNotFoundError = type('EntryNotFoundError', (Exception,), {})
+    LocalEntryNotFoundError = type('LocalEntryNotFoundError', (Exception,), {})
+    BadCredentialsError = type('BadCredentialsError', (Exception,), {})
+    HfHubHTTPError = type('HfHubHTTPError', (Exception,), {})
+    __all__ = ['HfFolder', 'whoami', 'CommitOperationAdd', 'SpaceHardware', 'SpaceStage']
 
-# Create the complete mock module with ALL required imports
+# Create the mock module
 mock_hub = type(sys)('huggingface_hub')
-mock_hub.HfFolder = MockHfFolder
-mock_hub.whoami = lambda: {"name": "user", "token": None}
-mock_hub.CommitOperationAdd = type('CommitOperationAdd', (), {})
-mock_hub.SpaceHardware = type('SpaceHardware', (), {})
-mock_hub.SpaceStage = type('SpaceStage', (), {})
-mock_hub.RepositoryNotFoundError = type('RepositoryNotFoundError', (Exception,), {})
-mock_hub.RevisionNotFoundError = type('RevisionNotFoundError', (Exception,), {})
-mock_hub.EntryNotFoundError = type('EntryNotFoundError', (Exception,), {})
-mock_hub.LocalEntryNotFoundError = type('LocalEntryNotFoundError', (Exception,), {})
-mock_hub.BadCredentialsError = type('BadCredentialsError', (Exception,), {})
-mock_hub.HfHubHTTPError = type('HfHubHTTPError', (Exception,), {})
-mock_hub.__all__ = ['HfFolder', 'whoami', 'CommitOperationAdd', 'SpaceHardware', 'SpaceStage']
+for attr, value in MockHubModule.__dict__.items():
+    if not attr.startswith('_'):
+        setattr(mock_hub, attr, value)
 
 # Inject into sys.modules
 sys.modules['huggingface_hub'] = mock_hub
 
 # Also patch the __init__.py submodule
 mock_init = type(sys)('huggingface_hub.__init__')
-mock_init.HfFolder = MockHfFolder
-mock_init.whoami = lambda: {"name": "user", "token": None}
-mock_init.CommitOperationAdd = mock_hub.CommitOperationAdd
-mock_init.SpaceHardware = mock_hub.SpaceHardware
-mock_init.SpaceStage = mock_hub.SpaceStage
+for attr, value in MockHubModule.__dict__.items():
+    if not attr.startswith('_'):
+        setattr(mock_init, attr, value)
 sys.modules['huggingface_hub.__init__'] = mock_init
 
-# Also mock gradio_client if it imports huggingface_hub
-mock_gradio_client = type(sys)('gradio_client')
-mock_gradio_client.Client = type('Client', (), {})
-sys.modules['gradio_client'] = mock_gradio_client
+# DO NOT mock gradio_client - let it load normally
+# Just ensure huggingface_hub is mocked before it loads
 
 print("✓ All mocks injected successfully")
 

@@ -3,10 +3,10 @@
 echo "=== POST BUILD: Fixing dependencies ==="
 
 # Force uninstall HF's forced versions
-pip uninstall -y gradio huggingface-hub gradio_client || true
+pip uninstall -y gradio huggingface-hub gradio-client || true
 
-# Install your versions
-pip install --no-cache-dir gradio==4.44.0 huggingface_hub==0.23.5
+# Install compatible versions
+pip install --no-cache-dir huggingface_hub==0.23.5 gradio==4.44.0
 
 # Verify installations
 python -c "import gradio; print(f'Gradio version: {gradio.__version__}')"
