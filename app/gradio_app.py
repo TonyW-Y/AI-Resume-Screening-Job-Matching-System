@@ -1,7 +1,51 @@
-import gradio as gr
+# ============================================================
+# FIX: Patch huggingface_hub BEFORE importing gradio
+# This MUST be the first code executed
+# ============================================================
 import sys
+import importlib
+
+# Create mock HfFolder class
+class MockHfFolder:
+    @staticmethod
+    def get_token():
+        return None
+    @staticmethod
+    def save_token(token):
+        pass
+    @staticmethod
+    def delete_token():
+        pass
+    @staticmethod
+    def get_token_path():
+        return "/tmp/fake_token"
+    @staticmethod
+    def get_path():
+        return "/tmp/fake_token"
+
+# Create a complete mock module BEFORE gradio imports it
+mock_hub = type(sys)('huggingface_hub')
+mock_hub.HfFolder = MockHfFolder
+mock_hub.whoami = lambda: {"name": "user", "token": None}
+
+# Inject into sys.modules
+sys.modules['huggingface_hub'] = mock_hub
+
+# Also patch the __init__.py submodule
+mock_init = type(sys)('huggingface_hub.__init__')
+mock_init.HfFolder = MockHfFolder
+mock_init.whoami = lambda: {"name": "user", "token": None}
+sys.modules['huggingface_hub.__init__'] = mock_init
+
+print("✓ HfFolder patched successfully")
+
+# ============================================================
+# NOW safe to import gradio
+# ============================================================
+import gradio as gr
 import os
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+# Rest of your imports
 from rank_resumes import search_resumes
 from resume_manager import get_all_resumes, delete_resume, add_resume_from_text, add_resume_from_pdf
 

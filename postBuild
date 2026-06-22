@@ -1,0 +1,7 @@
+#!/bin/bash
+
+# Force uninstall and reinstall correct versions
+pip uninstall -y gradio huggingface-hub
+pip install --no-cache-dir gradio==4.44.0 huggingface_hub==0.23.5
+
+echo "✓ Dependencies fixed"
