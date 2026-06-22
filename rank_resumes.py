@@ -1,14 +1,17 @@
 import torch
 import chromadb
 import ollama
+import os
 from sentence_transformers import SentenceTransformer
 from ffn import ffn
 from typing import Dict, Any
 import joblib
 from build_db import build_chromadb
+from huggingface_hub import InferenceClient
 
 
 # Paths
+HF_TOKEN = os.environ.get("HF_TOKEN")
 OLLAMA_MODEL = "llama3.2:3b"
 CHROMA_PATH = "chromadb_store"
 EMBEDDING_FILE = "embeddings/resumes.npy"
@@ -109,14 +112,22 @@ def search_resumes(jd_text: str, top_k: int = 5) -> Dict[str, Any]:
 
         Be specific and reference actual skills and experience from the resumes."""
 
-        # Ollama call
-        response = ollama.chat(
-            model=OLLAMA_MODEL,
-            messages=[{"role": "user", "content": prompt}],
-            options={"temperature": 0.0}
+        if HF_TOKEN:
+            # deployed - use HuggingFace
+            hf_client = InferenceClient(
+                model="meta-llama/Llama-3.2-3B-Instruct",
+                token=HF_TOKEN
             )
+            report = hf_client.text_generation(prompt, max_new_tokens=1000, temperature=0.01)
+        else:
+            # local - use Ollama
+            response = ollama.chat(
+                model=OLLAMA_MODEL,
+                messages=[{"role": "user", "content": prompt}],
+                options={"temperature": 0.0}
+            )
+            report = response["message"]["content"]
 
-        report = response["message"]["content"]
         return {
                 "predicted_category": predicted_category,
                 "ranked_candidates": ranked,
