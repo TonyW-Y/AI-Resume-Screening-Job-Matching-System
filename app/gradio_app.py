@@ -1,6 +1,5 @@
 # ============================================================
 # FIX: Patch huggingface_hub BEFORE importing gradio
-# This MUST be the first code executed
 # ============================================================
 import sys
 import importlib

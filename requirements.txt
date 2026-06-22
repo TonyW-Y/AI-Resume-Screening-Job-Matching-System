@@ -4,10 +4,8 @@ chromadb>=0.6.0,<0.7.0
 pypdf
 scikit-learn
 fastapi
-gradio==4.44.0
 ollama
 pandas
 numpy
 joblib
-huggingface_hub==0.23.5
 uvicorn
