@@ -1,62 +1,55 @@
 # ============================================================
-# FIX: Mock huggingface_hub but let gradio_client load normally
+# FIX: Only patch HfFolder, let everything else load normally
 # ============================================================
 import sys
 import importlib
 
-# Create a comprehensive mock for huggingface_hub
-class MockHfFolder:
-    @staticmethod
-    def get_token():
-        return None
-    @staticmethod
-    def save_token(token):
-        pass
-    @staticmethod
-    def delete_token():
-        pass
-    @staticmethod
-    def get_token_path():
-        return "/tmp/fake_token"
-    @staticmethod
-    def get_path():
-        return "/tmp/fake_token"
+# Step 1: Let huggingface_hub load normally first
+try:
+    import huggingface_hub as hf_hub
+    print(f"✓ huggingface_hub loaded: {hf_hub.__version__}")
+except Exception as e:
+    print(f"⚠️ Error loading huggingface_hub: {e}")
 
-# Create a fake huggingface_hub module with ALL required imports
-class MockHubModule:
-    HfFolder = MockHfFolder
-    whoami = lambda: {"name": "user", "token": None}
-    CommitOperationAdd = type('CommitOperationAdd', (), {})
-    SpaceHardware = type('SpaceHardware', (), {})
-    SpaceStage = type('SpaceStage', (), {})
-    RepositoryNotFoundError = type('RepositoryNotFoundError', (Exception,), {})
-    RevisionNotFoundError = type('RevisionNotFoundError', (Exception,), {})
-    EntryNotFoundError = type('EntryNotFoundError', (Exception,), {})
-    LocalEntryNotFoundError = type('LocalEntryNotFoundError', (Exception,), {})
-    BadCredentialsError = type('BadCredentialsError', (Exception,), {})
-    HfHubHTTPError = type('HfHubHTTPError', (Exception,), {})
-    __all__ = ['HfFolder', 'whoami', 'CommitOperationAdd', 'SpaceHardware', 'SpaceStage']
+# Step 2: Check if HfFolder exists, if not, add it
+if not hasattr(hf_hub, 'HfFolder'):
+    class HfFolder:
+        @staticmethod
+        def get_token():
+            return None
+        @staticmethod
+        def save_token(token):
+            pass
+        @staticmethod
+        def delete_token():
+            pass
+        @staticmethod
+        def get_token_path():
+            return "/tmp/fake_token"
+        @staticmethod
+        def get_path():
+            return "/tmp/fake_token"
+    
+    # Add HfFolder to the module
+    hf_hub.HfFolder = HfFolder
+    setattr(hf_hub, 'HfFolder', HfFolder)
+    
+    # Also add to the __init__ submodule if needed
+    if hasattr(hf_hub, '__init__'):
+        hf_hub.__init__.HfFolder = HfFolder
+    
+    print("✓ HfFolder patched successfully")
+else:
+    print("✓ HfFolder already exists")
 
-# Create the mock module
-mock_hub = type(sys)('huggingface_hub')
-for attr, value in MockHubModule.__dict__.items():
-    if not attr.startswith('_'):
-        setattr(mock_hub, attr, value)
+# Step 3: Make sure sys.modules has the correct reference
+sys.modules['huggingface_hub'] = hf_hub
 
-# Inject into sys.modules
-sys.modules['huggingface_hub'] = mock_hub
+# Also ensure the __init__ submodule is accessible
+if 'huggingface_hub.__init__' not in sys.modules:
+    sys.modules['huggingface_hub.__init__'] = hf_hub
 
-# Also patch the __init__.py submodule
-mock_init = type(sys)('huggingface_hub.__init__')
-for attr, value in MockHubModule.__dict__.items():
-    if not attr.startswith('_'):
-        setattr(mock_init, attr, value)
-sys.modules['huggingface_hub.__init__'] = mock_init
-
-# DO NOT mock gradio_client - let it load normally
-# Just ensure huggingface_hub is mocked before it loads
-
-print("✓ All mocks injected successfully")
+print("✓ All patches applied successfully")
 
 # ============================================================
 # NOW safe to import gradio
