@@ -1,7 +1,15 @@
 #!/bin/bash
 
-# Force uninstall and reinstall correct versions
-pip uninstall -y gradio huggingface-hub
+echo "=== POST BUILD: Fixing dependencies ==="
+
+# Force uninstall HF's forced versions
+pip uninstall -y gradio huggingface-hub gradio_client || true
+
+# Install your versions
 pip install --no-cache-dir gradio==4.44.0 huggingface_hub==0.23.5
 
-echo "✓ Dependencies fixed"
+# Verify installations
+python -c "import gradio; print(f'Gradio version: {gradio.__version__}')"
+python -c "import huggingface_hub; print(f'HF Hub version: {huggingface_hub.__version__}')"
+
+echo "=== POST BUILD: Complete ==="

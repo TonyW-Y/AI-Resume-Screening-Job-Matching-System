@@ -1,10 +1,10 @@
 # ============================================================
-# FIX: Patch huggingface_hub BEFORE importing gradio
+# FIX: Complete mock of huggingface_hub for ALL imports
 # ============================================================
 import sys
 import importlib
 
-# Create mock HfFolder class
+# Create a comprehensive mock for huggingface_hub
 class MockHfFolder:
     @staticmethod
     def get_token():
@@ -22,10 +22,24 @@ class MockHfFolder:
     def get_path():
         return "/tmp/fake_token"
 
-# Create a complete mock module BEFORE gradio imports it
+# Create a mock client that handles all the imports
+class MockClient:
+    pass
+
+# Create the complete mock module with ALL required imports
 mock_hub = type(sys)('huggingface_hub')
 mock_hub.HfFolder = MockHfFolder
 mock_hub.whoami = lambda: {"name": "user", "token": None}
+mock_hub.CommitOperationAdd = type('CommitOperationAdd', (), {})
+mock_hub.SpaceHardware = type('SpaceHardware', (), {})
+mock_hub.SpaceStage = type('SpaceStage', (), {})
+mock_hub.RepositoryNotFoundError = type('RepositoryNotFoundError', (Exception,), {})
+mock_hub.RevisionNotFoundError = type('RevisionNotFoundError', (Exception,), {})
+mock_hub.EntryNotFoundError = type('EntryNotFoundError', (Exception,), {})
+mock_hub.LocalEntryNotFoundError = type('LocalEntryNotFoundError', (Exception,), {})
+mock_hub.BadCredentialsError = type('BadCredentialsError', (Exception,), {})
+mock_hub.HfHubHTTPError = type('HfHubHTTPError', (Exception,), {})
+mock_hub.__all__ = ['HfFolder', 'whoami', 'CommitOperationAdd', 'SpaceHardware', 'SpaceStage']
 
 # Inject into sys.modules
 sys.modules['huggingface_hub'] = mock_hub
@@ -34,9 +48,17 @@ sys.modules['huggingface_hub'] = mock_hub
 mock_init = type(sys)('huggingface_hub.__init__')
 mock_init.HfFolder = MockHfFolder
 mock_init.whoami = lambda: {"name": "user", "token": None}
+mock_init.CommitOperationAdd = mock_hub.CommitOperationAdd
+mock_init.SpaceHardware = mock_hub.SpaceHardware
+mock_init.SpaceStage = mock_hub.SpaceStage
 sys.modules['huggingface_hub.__init__'] = mock_init
 
-print("✓ HfFolder patched successfully")
+# Also mock gradio_client if it imports huggingface_hub
+mock_gradio_client = type(sys)('gradio_client')
+mock_gradio_client.Client = type('Client', (), {})
+sys.modules['gradio_client'] = mock_gradio_client
+
+print("✓ All mocks injected successfully")
 
 # ============================================================
 # NOW safe to import gradio
