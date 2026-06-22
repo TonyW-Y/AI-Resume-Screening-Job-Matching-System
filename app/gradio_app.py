@@ -1,5 +1,5 @@
 # ============================================================
-# FIX: Only patch HfFolder, let everything else load normally
+# FIX: Only patch HfFolder on the main module, not __init__
 # ============================================================
 import sys
 import importlib
@@ -11,7 +11,7 @@ try:
 except Exception as e:
     print(f"⚠️ Error loading huggingface_hub: {e}")
 
-# Step 2: Check if HfFolder exists, if not, add it
+# Step 2: Check if HfFolder exists, if not, add it to the main module
 if not hasattr(hf_hub, 'HfFolder'):
     class HfFolder:
         @staticmethod
@@ -30,24 +30,16 @@ if not hasattr(hf_hub, 'HfFolder'):
         def get_path():
             return "/tmp/fake_token"
     
-    # Add HfFolder to the module
+    # Add HfFolder to the main module ONLY
     hf_hub.HfFolder = HfFolder
     setattr(hf_hub, 'HfFolder', HfFolder)
     
-    # Also add to the __init__ submodule if needed
-    if hasattr(hf_hub, '__init__'):
-        hf_hub.__init__.HfFolder = HfFolder
+    # Update sys.modules
+    sys.modules['huggingface_hub'] = hf_hub
     
-    print("✓ HfFolder patched successfully")
+    print("✓ HfFolder patched successfully on main module")
 else:
     print("✓ HfFolder already exists")
-
-# Step 3: Make sure sys.modules has the correct reference
-sys.modules['huggingface_hub'] = hf_hub
-
-# Also ensure the __init__ submodule is accessible
-if 'huggingface_hub.__init__' not in sys.modules:
-    sys.modules['huggingface_hub.__init__'] = hf_hub
 
 print("✓ All patches applied successfully")
 
